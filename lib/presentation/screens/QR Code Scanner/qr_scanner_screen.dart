@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:eis/data/api/teacher_attendance.dart';
 import 'package:get/get.dart';
+import 'package:eis/data/controller/teacher_controller.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -14,7 +16,8 @@ class QRScannerScreen extends StatefulWidget {
 class _QRScannerScreenState extends State<QRScannerScreen> {
   final MobileScannerController cameraController = MobileScannerController();
   bool torchEnabled = false;
-  bool _isProcessing = false; // 🛑 Block duplicate calls
+  bool isScanning = false; // Prevent multiple scans
+  final TeacherController teacherController = Get.put(TeacherController());
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +25,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       appBar: AppBar(
         title: const Text('QR Code Scanner'),
         actions: [
+          // Torch Toggle Button
           IconButton(
             icon: Icon(torchEnabled ? Icons.flash_on : Icons.flash_off),
             onPressed: () {
@@ -31,6 +35,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
               cameraController.toggleTorch();
             },
           ),
+          // Switch Camera Button
           IconButton(
             icon: const Icon(Icons.cameraswitch),
             onPressed: () => cameraController.switchCamera(),
@@ -40,39 +45,61 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
       body: MobileScanner(
         controller: cameraController,
         onDetect: (BarcodeCapture barcodeCapture) async {
-          if (_isProcessing) return; // prevent duplicate
-          _isProcessing = true;
+          if (isScanning) return; // Prevent multiple scans
+
+          isScanning = true; // Lock scanning
 
           final String? code = barcodeCapture.barcodes.first.rawValue;
 
           if (code != null) {
-            debugPrint('QR Code: $code');
+            debugPrint('Scanned QR Code: $code');
             final teacherEmail = code;
-            await markTeacherAttendance(teacherEmail);
 
-            // Optional: wait a bit before allowing another scan
-            await Future.delayed(Duration(seconds: 2));
+            // Call backend API to mark attendance
+            final response = await markTeacherAttendance(teacherEmail);
 
-            // Navigate to dashboard
-            Get.to(() => const DashboardScreen());
+            if (response['success'] == true) {
+              // Save teacher data to controller if attendance is marked
+              teacherController.saveTeacherData(
+                name: response['teacherName'],
+                email: response['teacherEmail'],
+                designation: response['teacherDesignation'],
+                department: response['teacherDepartment'],
+              );
+              isScanning = false; // Unlock scanning before navigation
+              // Get.toNamed('/dashboard');
+              Get.to(() => const DashboardScreen());
+            } else {
+              // Show error dialog if backend response is not successful
+              AwesomeDialog(
+                context: context,
+                dialogType: DialogType.error,
+                animType: AnimType.bottomSlide,
+                title: 'Error',
+                desc: response['message'] ??
+                    'Failed to mark attendance. Please try again.',
+                btnOkOnPress: () {},
+              ).show().then((_) {
+                isScanning = false; // Unlock scanning after dialog closes
+              });
+              return;
+            }
           } else {
-            showDialog(
+            // Show warning if QR code is invalid or not detected
+            AwesomeDialog(
               context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Scan Error'),
-                content:
-                    const Text('No valid QR code detected. Please try again.'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('OK'),
-                  ),
-                ],
-              ),
-            );
+              dialogType: DialogType.warning,
+              animType: AnimType.bottomSlide,
+              title: 'Scan Error',
+              desc: 'No valid QR code detected. Please try again.',
+              btnOkOnPress: () {},
+            ).show().then((_) {
+              isScanning = false; // Unlock scanning after dialog closes
+            });
+            return;
           }
 
-          _isProcessing = false; // ✅ Reset flag
+          isScanning = false; // Unlock scanning if successful
         },
       ),
     );

@@ -8,29 +8,38 @@ HttpClient customHttpClient = HttpClient()
 
 final httpClient = IOClient(customHttpClient);
 
-Future<void> markTeacherAttendance(String teacherEmployeeNumber) async {
-  final url = Uri.parse(
-      "https://192.168.100.12:7035/api/teacher/attendance_with_login");
+Future<Map<String, dynamic>> markTeacherAttendance(
+    String teacherEmployeeNumber) async {
+  final url =
+      Uri.parse("https://192.168.1.229:7035/api/teacher/attendance_with_login");
 
   try {
     final response = await httpClient.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'teacherEmployeeNumber': teacherEmployeeNumber,
-        'scannedAt': DateTime.now().toIso8601String(),
-      }),
+      body: jsonEncode({'teacherEmployeeNumber': teacherEmployeeNumber}),
     );
 
     if (response.statusCode == 200) {
+      // If the response is successful, decode the response and return the teacher details
+      final responseData = jsonDecode(response.body);
       print("✅ Attendance marked successfully\n${response.body}");
-      print('Name = ${jsonDecode(response.body)['teacherName']}');
-      print('Email = ${jsonDecode(response.body)['teacherEmail']}');
+
+      return {
+        "success": true,
+        "teacherName": responseData['teacherName'],
+        "teacherEmail": responseData['teacherEmail'],
+        "teacherDesignation": responseData['teacherDesignation'],
+        "teacherDepartment": responseData['teacherDepartment'],
+      };
     } else {
-      print(
-          "❌ Failed to mark attendance: ${jsonDecode(response.body)['error']}");
+      // If the request fails, return false and the message
+      print("❌ Failed to mark attendance: ${response.body}");
+      return {"success": false, "message": "Failed to mark attendance"};
     }
   } catch (e) {
+    // If there's an error, return false with the error message
     print("🚨 Error sending attendance: $e");
+    return {"success": false, "message": "Error sending attendance"};
   }
 }
