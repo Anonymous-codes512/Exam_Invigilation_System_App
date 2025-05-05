@@ -10,8 +10,11 @@ final httpClient = IOClient(customHttpClient);
 
 Future<Map<String, dynamic>> markTeacherAttendance(
     String teacherEmployeeNumber) async {
-  final url =
-      Uri.parse("https://192.168.1.229:7035/api/teacher/attendance_with_login");
+  print("Mark Teacher Attendance Called");
+  final url = Uri.parse(
+      "https://192.168.100.12:7035/api/teacher/attendance_with_login");
+  // final url =
+  //     Uri.parse("https://10.110.13.96:7035/api/teacher/attendance_with_login");
 
   try {
     final response = await httpClient.post(
@@ -27,6 +30,7 @@ Future<Map<String, dynamic>> markTeacherAttendance(
 
       return {
         "success": true,
+        "teacherEmployeeNumber": responseData['teacherEmployeeNumber'],
         "teacherName": responseData['teacherName'],
         "teacherEmail": responseData['teacherEmail'],
         "teacherDesignation": responseData['teacherDesignation'],

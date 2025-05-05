@@ -1,9 +1,9 @@
 class Student {
-  String name;
-  String seatNo;
-  String regNo;
-  String paper;
-  String timeSlot;
+  final String name;
+  final String seatNo;
+  final String regNo;
+  final String paper;
+  final String timeSlot;
   String attendanceStatus;
 
   Student({
@@ -12,6 +12,18 @@ class Student {
     required this.regNo,
     required this.paper,
     required this.timeSlot,
-    required this.attendanceStatus,
+    this.attendanceStatus = 'Absent', // Default to Absent
   });
+
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      name: json['name'],
+      seatNo: json['seatNo'],
+      regNo: json['regNo'],
+      paper: json['paper'],
+      timeSlot: json['timeSlot'],
+      attendanceStatus:
+          json['attendanceStatus'] ?? 'Absent', // Default to 'Absent'
+    );
+  }
 }

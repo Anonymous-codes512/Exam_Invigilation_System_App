@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-// import 'package:eis/views/login/loginPage.dart';
-import 'package:eis/presentation/screens/QR%20Code%20Scanner/qr_scanner_screen.dart';
+import 'package:eis/presentation/screens/Teacher%20Attendance/teacher_attendance.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,8 +22,7 @@ class _SplashScreenState extends State<SplashScreen>
     )..repeat();
 
     Future.delayed(const Duration(seconds: 3), () {
-      Get.off(() => const QRScannerScreen());
-      // Get.off(() => const LoginScreen());
+      Get.to(() => TeacherQRScannerScreen());
     });
   }
 

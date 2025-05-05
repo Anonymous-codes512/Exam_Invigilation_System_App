@@ -1,8 +1,8 @@
 import 'package:eis/core/constants/AppColors.dart';
 import 'package:eis/core/constants/AppTheme.dart';
+import 'package:eis/presentation/Student%20Attendance%20By%20QR/student_attendance.dart';
 import 'package:eis/presentation/screens/Paper%20Collection%20Summery/paper_collection_summary.dart';
 import 'package:eis/presentation/screens/Profile/profile.dart';
-import 'package:eis/presentation/screens/QR%20Code%20Scanner/qr_scanner_screen.dart';
 import 'package:eis/presentation/screens/Room%20Based%20Attendance/room_based_attendance.dart';
 import 'package:eis/presentation/screens/Unfair%20Means%20Reporting/unfair_means_report.dart';
 import 'package:eis/presentation/widgets/dashboard_card.dart';
@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Get teacher name from the TeacherController
     final teacherController = Get.find<TeacherController>();
     final teacherName = teacherController.teacherName;
+    final teacherEmployeeNumber = teacherController.teacherEmployeeNumber.value;
 
     return Scaffold(
       appBar: AppBar(
@@ -96,9 +97,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // QR Scanner Button
                     DashboardCard(
                       icon: Icons.qr_code_scanner,
-                      label: 'Attendance by QR',
+                      label: 'Student Attendance by QR',
                       onTap: () {
-                        Get.to(() => const QRScannerScreen());
+                        Get.to(() => StudentQRScannerScreen());
                       },
                     ),
 
@@ -107,7 +108,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.meeting_room,
                       label: 'Attendance by Room',
                       onTap: () {
-                        Get.to(() => const RoomBasedAttendance());
+                        Get.to(() => RoomBasedAttendance(
+                              teacherEmployeeNumber: teacherEmployeeNumber,
+                            ));
                       },
                     ),
 
