@@ -1,6 +1,6 @@
 import 'package:eis/core/constants/AppColors.dart';
 import 'package:eis/core/constants/AppTheme.dart';
-import 'package:eis/presentation/Student%20Attendance%20By%20QR/student_attendance.dart';
+import 'package:eis/presentation/screens/Student%20Attendance%20By%20QR/student_attendance.dart';
 import 'package:eis/presentation/screens/Paper%20Collection%20Summery/paper_collection_summary.dart';
 import 'package:eis/presentation/screens/Profile/profile.dart';
 import 'package:eis/presentation/screens/Room%20Based%20Attendance/room_based_attendance.dart';
@@ -99,7 +99,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.qr_code_scanner,
                       label: 'Student Attendance by QR',
                       onTap: () {
-                        Get.to(() => StudentQRScannerScreen());
+                        Get.off(() =>
+                            StudentQRScannerScreen()); // Using off() to remove previous screens
                       },
                     ),
 

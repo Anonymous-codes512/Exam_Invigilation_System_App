@@ -1,3 +1,5 @@
+import 'package:eis/presentation/widgets/overlay_loader.dart';
+import 'package:eis/presentation/widgets/qr_scanner_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
@@ -19,10 +21,31 @@ class QRScannerWidget extends StatefulWidget {
 }
 
 class _QRScannerWidgetState extends State<QRScannerWidget> {
-  final MobileScannerController _cameraController = MobileScannerController();
+  MobileScannerController _cameraController = MobileScannerController();
   bool _torchEnabled = false;
   bool _isScanning = false;
-  bool _isLoading = false; // To manage the loading state
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cameraController = MobileScannerController();
+    _resetState();
+  }
+
+  @override
+  void didUpdateWidget(QRScannerWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scanType != widget.scanType) {
+      _resetState();
+    }
+  }
+
+  void _resetState() {
+    _isScanning = false;
+    _isLoading = false;
+    _torchEnabled = false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,31 +72,64 @@ class _QRScannerWidgetState extends State<QRScannerWidget> {
           ),
         ],
       ),
-      body: MobileScanner(
-        controller: _cameraController,
-        onDetect: (BarcodeCapture barcodeCapture) async {
-          if (_isScanning || _isLoading) return; // Prevent multiple scans
+      body: OverlayLoader(
+        isLoading: _isLoading,
+        message: widget.scanType == QRScanType.teacher
+            ? 'Processing teacher attendance...'
+            : 'Processing student attendance...',
+        child: Stack(
+          children: [
+            MobileScanner(
+              controller: _cameraController,
+              onDetect: (BarcodeCapture barcodeCapture) async {
+                if (_isScanning || _isLoading) return;
 
-          _isScanning = true; // Lock scanning to prevent duplicates
+                _isScanning = true;
+                await Future.delayed(Duration(milliseconds: 500)); // Debounce
+                final String? code = barcodeCapture.barcodes.first.rawValue;
 
-          final String? code = barcodeCapture.barcodes.first.rawValue;
+                if (code != null) {
+                  debugPrint('Scanned QR Code: $code');
+                  setState(() {
+                    _isLoading = true; // Show loading indicator
+                  });
 
-          if (code != null) {
-            debugPrint('Scanned QR Code: $code');
-            setState(() {
-              _isLoading = true; // Show loading indicator
-            });
-
-            widget.onScanSuccess(code); // Trigger the API call
-
-            setState(() {
-              _isLoading = false; // Stop loading once done
-            });
-          } else {
-            _showErrorDialog('Scan Error', 'No valid QR code detected.');
-            _isScanning = false;
-          }
-        },
+                  print(
+                      '🔄 Initializing QRScannerWidget with type: ${widget.scanType}');
+                  try {
+                    // Log for debugging
+                    print('✅ Widget scan type: ${widget.scanType}');
+                    if (widget.scanType == QRScanType.student) {
+                      // Call student API if the scan type is student
+                      await widget
+                          .onScanSuccess(code); // Pass code to student API
+                    } else if (widget.scanType == QRScanType.teacher) {
+                      // Call teacher API if the scan type is teacher
+                      await widget
+                          .onScanSuccess(code); // Pass code to teacher API
+                    }
+                  } catch (e) {
+                    _showErrorDialog('Error', 'Failed to process QR code: $e');
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                        _isScanning =
+                            false; // Unlock scanning after one successful scan
+                      });
+                    }
+                  }
+                } else {
+                  _showErrorDialog('Scan Error', 'No valid QR code detected.');
+                  _isScanning = false;
+                }
+              },
+            ),
+            QRScannerOverlay(
+              scanType: widget.scanType,
+            ),
+          ],
+        ),
       ),
     );
   }

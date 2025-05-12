@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:eis/data/controller/student_controller.dart';
 import 'package:eis/data/controller/teacher_controller.dart';
-import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:get/get.dart';
+
+final basicURI = "https://192.168.100.12:7035/api/student";
+// final basicURI = "https://10.110.13.96:7035/api/student";
 
 HttpClient customHttpClient = HttpClient()
   ..badCertificateCallback =
@@ -17,10 +20,7 @@ Future<Map<String, dynamic>> markStudentAttendance(
 
   final teacherEmployeeNumber = teacherController.teacherEmployeeNumber.value;
 
-  // final url =
-  //     Uri.parse("https://10.110.13.96:7035/api/student/attendance_by_qr_code");
-  final url = Uri.parse(
-      "https://192.168.100.12:7035/api/student/attendance_by_qr_code");
+  final url = Uri.parse("$basicURI/attendance_by_qr_code");
 
   try {
     final response = await httpClient.post(
@@ -49,62 +49,126 @@ Future<Map<String, dynamic>> markStudentAttendance(
 
 Future<Map<String, dynamic>> fetchStudentsData(
     String teacherEmployeeNumber, String dateAndTime) async {
+  final studentController = Get.find<StudentController>();
+  print(
+      "🔄 ⛔⛔⛔ Calling fetchStudentsData... ${studentController.studentList.length}");
+
+  // Check if data is already available, return the cached data
+  if (studentController.isDataAvailable(teacherEmployeeNumber)) {
+    return {
+      "success": true,
+      "data": studentController.studentList,
+    }; // Return cached data
+  }
+
+  // If data is not available, fetch from API
+  print("🌐 Fetching student data from API...");
   final url = Uri.parse(
-      'http://192.168.100.12:7035/api/student/attendance_by_room?teacherEmployeeNumber=$teacherEmployeeNumber&dateAndTime=$dateAndTime');
+      "$basicURI/fetch_student_from_room?teacherEmployeeNumber=$teacherEmployeeNumber&dateAndTime=$dateAndTime");
 
   try {
-    final response = await http.get(
+    final response = await httpClient.get(
       url,
       headers: {'Content-Type': 'application/json'},
-    ).timeout(const Duration(seconds: 30)); // Increase the timeout
+    ).timeout(const Duration(seconds: 30));
+
+    print("Response Status Code: ${response.statusCode}");
+    print("Response Body: ${response.body}");
 
     if (response.statusCode == 200) {
-      // Parse the response body into a Map
-      Map<String, dynamic> responseBody = json.decode(response.body);
-      return {
-        "success": true,
-        "data": responseBody,
-      };
+      Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      if (responseBody['success'] == true && responseBody['data'] != null) {
+        List<dynamic> rawStudents = responseBody['data'];
+        List<Map<String, dynamic>> studentMaps =
+            List<Map<String, dynamic>>.from(rawStudents);
+
+        // Save the teacher data and student data in the controller
+        studentController
+            .saveTeacherData(teacherEmployeeNumber); // Save Teacher ID
+        studentController.saveStudentData(studentMaps); // Save student data
+
+        print("✅ Data fetched and saved successfully.");
+        return {
+          "success": true,
+          "data": studentMaps, // Return fetched data
+        };
+      } else {
+        print("❌ API success=false or no data");
+        return {
+          "success": false,
+          "message": "No data available",
+        };
+      }
     } else {
+      print("❌ Failed to fetch: ${response.body}");
       return {
         "success": false,
-        "message": "Failed to load data from the server",
+        "message": "Failed to fetch data from the server",
       };
     }
   } catch (e) {
+    print("❌ Error occurred while fetching: $e");
     return {
       "success": false,
-      "message": "Error occurred while fetching data: $e",
+      "message": "Error: $e",
     };
   }
 }
 
-Future<Map<String, dynamic>> markStudentAttendanceByRoom(
-    String teacherEmployeeNumber) async {
-  // final url =
-  //     Uri.parse("https://10.110.13.96:7035/api/student/attendance_by_qr_code");
-  final url = Uri.parse(
-      "https://192.168.100.12:7035/api/student/attendance_by_qr_code");
+Future<void> submitAttendanceAndUpdate() async {
+  final studentController = Get.find<StudentController>();
+
+  // Update the `attendanceStatus` in the controller before making the API call
+  for (var student in studentController.studentList) {
+    if (student["attendanceStatus"] == null) {
+      student["attendanceStatus"] = "Absent"; // Default to "Absent" if not set
+    }
+  }
+
+  // Prepare the data to send to the backend
+  List<Map<String, dynamic>> studentsToSubmit =
+      studentController.studentList.map((student) {
+    return {
+      "teacherEmployeeNumber": studentController
+          .teacherId.value, // Teacher Employee Number from controller
+      "registrationNumber":
+          student["registrationNumber"], // Registration Number
+      "roomNumber": student["roomNumber"], // Room Number
+      "paperId": student["paperId"], // Paper ID
+      "date": student["date"], // Date
+      "timeSlot": student["timeSlot"], // Time Slot
+      "attendanceStatus": student["attendanceStatus"], // Attendance Status
+    };
+  }).toList();
 
   try {
+    final url = Uri.parse("$basicURI/submit-attendance-batch");
+
+    for (var student in studentsToSubmit) {
+      print("Student: $student");
+    }
+
     final response = await httpClient.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'teacherEmployeeNumber': teacherEmployeeNumber,
-        'DateAndTime': DateTime.now().toIso8601String(),
-      }),
+      body: jsonEncode({"students": studentsToSubmit}),
     );
 
     if (response.statusCode == 200) {
-      return {"success": true, "message": "Attendance marked successfully"};
+      // If the API call is successful, print the success message
+      final responseBody = jsonDecode(response.body);
+
+      if (responseBody["success"]) {
+        print("✅ Attendance submitted successfully!");
+      } else {
+        print("❌ Failed to submit attendance: ${responseBody["message"]}");
+      }
     } else {
-      print("❌ Failed: ${response.body}");
-      Map<String, dynamic> responseBody = jsonDecode(response.body);
-      return {"success": false, "message": responseBody["message"]};
+      print(
+          "❌ Failed to submit attendance. Server responded with status: ${response.statusCode}");
     }
   } catch (e) {
-    print("🚨 Error sending attendance: $e");
-    return {"success": false, "message": "Error sending attendance"};
+    print("🚨 Error occurred while submitting attendance: $e");
   }
 }

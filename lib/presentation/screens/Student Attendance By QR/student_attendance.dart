@@ -15,7 +15,6 @@ class StudentQRScannerScreen extends StatelessWidget {
       onScanSuccess: (code) async {
         final studentRegistrationNumber = code;
 
-        // Call backend API to mark attendance
         final response = await markStudentAttendance(studentRegistrationNumber);
 
         if (response['success'] == true) {

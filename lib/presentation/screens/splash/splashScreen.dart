@@ -1,60 +1,86 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:eis/presentation/screens/Teacher%20Attendance/teacher_attendance.dart';
+import 'package:eis/presentation/widgets/education_loader.dart';
+import 'package:eis/presentation/screens/Teacher Attendance/teacher_attendance.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    )..repeat();
-
-    Future.delayed(const Duration(seconds: 3), () {
-      Get.to(() => TeacherQRScannerScreen());
-    });
+    _navigateToNextScreen();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Future<void> _navigateToNextScreen() async {
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => TeacherQRScannerScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      backgroundColor: Colors.white,
+      body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              'assets/images/logos/CUI WAH EIS.png',
-              width: 150,
-              height: 150,
+            // App logo
+            Expanded(
+              flex: 3,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/logos/CUI WAH EIS.png',
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, obj, st) => const Icon(
+                    Icons.school,
+                    size: 120,
+                    color: Color(0xFF1565C0),
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 20),
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
+
+            // App title
             const Text(
-              "CUI Exam Invigilation System",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              'Exam Invigilation System',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1565C0),
+              ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              "Automating Exam Invigilation",
-              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+
+            // Loader
+            const Expanded(
+              flex: 2,
+              child: Center(
+                child: EducationLoader(
+                  message: 'Initializing System...',
+                ),
+              ),
+            ),
+
+            // Footer
+            const Padding(
+              padding: EdgeInsets.only(bottom: 20.0),
+              child: Text(
+                'Powered by Danish Ejaz',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         ),

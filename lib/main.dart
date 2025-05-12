@@ -1,8 +1,13 @@
+import 'package:eis/data/controller/student_controller.dart';
+import 'package:eis/data/controller/teacher_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:eis/presentation/screens/splash/splashScreen.dart';
 
 void main() {
+  Get.put(StudentController()); // Register StudentController
+  Get.put(TeacherController()); // Register TeacherController
+
   runApp(const MyApp());
 }
 
